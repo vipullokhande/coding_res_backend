@@ -50,10 +50,10 @@ async function getHackerRankContests() {
 app.get("/contests", async (req, res) => {
     try {
         const codeforces = await getCodeforcesContests();
-        // const leetcode = await getLeetcodeContests();
+        const leetcode = await getLeetcodeContests();
         const hackerrank = await getHackerRankContests();
 
-        const allContests = [...codeforces, ...hackerrank];
+        const allContests = [...codeforces, ...leetcode, ...hackerrank];
 
         res.json(allContests);
 
