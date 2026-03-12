@@ -1,15 +1,21 @@
 const express = require("express");
 const axios = require("axios");
+const http = require("http");
+const https = require("https");
 const cors = require("cors");
 
 const app = express();
 app.use(cors());
 
 const PORT = process.env.PORT || 3000;
+const axiosInstance = axios.create({
+    httpAgent: new http.Agent({ family: 4 }),
+    httpsAgent: new https.Agent({ family: 4 }),
+});
 
 // CODEFORCES CONTESTS
 async function getCodeforcesContests() {
-    const res = await axios.get("https://codeforces.com/api/contest.list");
+    const res = await axiosInstance.get("https://codeforces.com/api/contest.list");
 
     return res.data.result
         .filter(c => c.phase === "BEFORE")
@@ -24,7 +30,7 @@ async function getCodeforcesContests() {
 
 // LEETCODE CONTESTS
 async function getLeetcodeContests() {
-    const res = await axios.get("https://kontests.net/api/v1/leet_code");
+    const res = await axiosInstance.get("https://kontests.net/api/v1/leet_code");
 
     return res.data.map(c => ({
         platform: "LeetCode",
@@ -36,7 +42,7 @@ async function getLeetcodeContests() {
 
 // HACKERRANK CONTESTS
 async function getHackerRankContests() {
-    const res = await axios.get("https://kontests.net/api/v1/hacker_rank");
+    const res = await axiosInstance.get("https://kontests.net/api/v1/hacker_rank");
 
     return res.data.map(c => ({
         platform: "HackerRank",
