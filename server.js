@@ -49,9 +49,11 @@ async function getHackerRankContests() {
 // MAIN API
 app.get("/contests", async (req, res) => {
     try {
-        const codeforces = await getCodeforcesContests();
-        const leetcode = await getLeetcodeContests();
-        const hackerrank = await getHackerRankContests();
+        const [codeforces, leetcode, hackerrank] = await Promise.all([
+            getCodeforcesContests(),
+            getLeetcodeContests(),
+            getHackerRankContests()
+        ]);
 
         const allContests = [...codeforces, ...leetcode, ...hackerrank];
 
