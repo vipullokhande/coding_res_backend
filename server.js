@@ -4,6 +4,7 @@ const http = require("http");
 const https = require("https");
 const cors = require("cors");
 const cheerio = require('cheerio');
+const dayjs = require("dayjs");
 
 const app = express();
 app.use(cors());
@@ -13,6 +14,230 @@ const axiosInstance = axios.create({
     httpAgent: new http.Agent({ family: 4 }),
     httpsAgent: new https.Agent({ family: 4 }),
 });
+const headers = {
+    "User-Agent": "Mozilla/5.0"
+};
+
+function calculateTimeLeft(dateText) {
+    if (!dateText) return "Unknown";
+
+    const parsed = dayjs(dateText);
+
+    if (!parsed.isValid()) return "Unknown";
+
+    const diff = parsed.diff(dayjs(), "day");
+
+    if (diff < 0) return "Ended";
+
+    return diff + " days left";
+}
+
+/* ---------------- SAFE SCRAPER WRAPPER ---------------- */
+
+async function safeScrape(name, scraper) {
+    try {
+        const data = await scraper();
+
+        console.log(`✅ ${name} success (${data.length})`);
+
+        return data;
+
+    } catch (err) {
+
+        console.log(`❌ ${name} failed: ${err.message}`);
+
+        return [];
+    }
+}
+
+/* ---------------- DEVPOST ---------------- */
+
+async function scrapeDevpost() {
+
+    const url = "https://devpost.com/hackathons";
+
+    const res = await axios.get(url, { headers });
+
+    const $ = cheerio.load(res.data);
+
+    const list = [];
+
+    $("a.block-wrapper").each((i, el) => {
+
+        const title = $(el).find("h3").text().trim();
+        const link = "https://devpost.com" + $(el).attr("href");
+        const image = $(el).find("img").attr("src");
+        const date = $(el).find(".submission-period").text().trim();
+
+        if (title) {
+
+            list.push({
+                source: "Devpost",
+                title,
+                date: date || "Unknown",
+                location: "Online / Global",
+                prize: "Varies",
+                timeLeft: calculateTimeLeft(date),
+                link,
+                image
+            });
+
+        }
+
+    });
+
+    return list;
+}
+
+/* ---------------- MLH ---------------- */
+
+async function scrapeMLH() {
+
+    const url = "https://mlh.io/seasons/2025/events";
+
+    const res = await axios.get(url, { headers });
+
+    const $ = cheerio.load(res.data);
+
+    const list = [];
+
+    $(".event").each((i, el) => {
+
+        const title = $(el).find(".event-name").text().trim();
+        const link = $(el).find("a").attr("href");
+        const date = $(el).find(".event-date").text().trim();
+        const location = $(el).find(".event-location").text().trim();
+
+        if (title) {
+
+            list.push({
+                source: "MLH",
+                title,
+                date: date || "Unknown",
+                location: location || "Unknown",
+                prize: "Varies",
+                timeLeft: calculateTimeLeft(date),
+                link,
+                image: ""
+            });
+
+        }
+
+    });
+
+    return list;
+}
+
+/* ---------------- UNSTOP ---------------- */
+
+async function scrapeUnstop() {
+
+    const url = "https://unstop.com/hackathons";
+
+    const res = await axios.get(url, { headers });
+
+    const $ = cheerio.load(res.data);
+
+    const list = [];
+
+    $("h3").each((i, el) => {
+
+        const title = $(el).text().trim();
+
+        if (title.toLowerCase().includes("hack")) {
+
+            list.push({
+                source: "Unstop",
+                title,
+                date: "Check website",
+                location: "Various",
+                prize: "Varies",
+                timeLeft: "Unknown",
+                link: url,
+                image: ""
+            });
+
+        }
+
+    });
+
+    return list;
+}
+
+/* ---------------- EVENTBRITE ---------------- */
+
+async function scrapeEventbrite() {
+
+    const url = "https://www.eventbrite.com/d/online/hackathon/";
+
+    const res = await axios.get(url, { headers });
+
+    const $ = cheerio.load(res.data);
+
+    const list = [];
+
+    $("h3").each((i, el) => {
+
+        const title = $(el).text().trim();
+
+        if (title.toLowerCase().includes("hack")) {
+
+            list.push({
+                source: "Eventbrite",
+                title,
+                date: "Check website",
+                location: "Online",
+                prize: "Varies",
+                timeLeft: "Unknown",
+                link: url,
+                image: ""
+            });
+
+        }
+
+    });
+
+    return list;
+}
+
+/* ---------------- API ROUTE ---------------- */
+
+app.get("/hackathons", async (req, res) => {
+
+    try {
+
+        const results = await Promise.all([
+
+            safeScrape("Devpost", scrapeDevpost),
+
+            safeScrape("MLH", scrapeMLH),
+
+            safeScrape("Unstop", scrapeUnstop),
+
+            safeScrape("Eventbrite", scrapeEventbrite)
+
+        ]);
+
+        const allHackathons = results.flat();
+
+        res.json({
+            success: true,
+            total: allHackathons.length,
+            data: allHackathons
+        });
+
+    } catch (err) {
+
+        res.status(500).json({
+            success: false,
+            message: "Unexpected server error",
+            error: err.message
+        });
+
+    }
+
+});
+
 // Codeforces
 async function scrapeCodeforces() {
     try {
