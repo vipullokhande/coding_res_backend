@@ -50,10 +50,20 @@ async function getHackerRankContests() {
 app.get("/contests", async (req, res) => {
     try {
         const [codeforces, leetcode, hackerrank] = await Promise.all([
-            getCodeforcesContests(),
-            getLeetcodeContests(),
-            getHackerRankContests()
+            getCodeforcesContests().catch(e => {
+                console.error("Codeforces API failed:", e.message);
+                return [];
+            }),
+            getLeetcodeContests().catch(e => {
+                console.error("LeetCode API failed:", e.message);
+                return [];
+            }),
+            getHackerRankContests().catch(e => {
+                console.error("HackerRank API failed:", e.message);
+                return [];
+            }),
         ]);
+
 
         const allContests = [...codeforces, ...leetcode, ...hackerrank];
 
